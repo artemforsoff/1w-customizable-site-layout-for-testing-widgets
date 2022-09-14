@@ -145,7 +145,7 @@
 
         const iframeId = uuidv4();
 
-        document.querySelector("#noWidgetsMessage").remove();
+        document.querySelector("#noWidgetsMessage")?.remove();
 
         document.querySelector("#tableBody").insertAdjacentHTML(
           "beforeend",
