@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Builder</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT"
+      crossorigin="anonymous"
+    />
+    <style>
+      select {
+        cursor: pointer;
+      }
+      /* Chrome, Safari, Edge, Opera */
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      /* Firefox */
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <form id="form">
+        <div class="row mb-3 mt-3">
+          <div class="col">
+            <label class="form-label">Widget name</label>
+            <input class="form-control" name="name" required />
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col">
+            <label class="form-label">Widget type</label>
+            <select class="form-select" name="type" required>
+              <option selected></option>
+              <option value="Old poller (desktop)">Old poller (desktop)</option>
+              <option value="Old poller (mobile)">Old poller (mobile)</option>
+              <option value="New poller (desktop)">New poller (desktop)</option>
+              <option value="New poller (mobile)">Old poller (mobile)</option>
+              <option value="Fact quiz">Fact quiz</option>
+              <option value="Fact quiz">Identity quiz</option>
+              <option value="Debate">Debate</option>
+              <option value="Survey (widget)">Survey (widget)</option>
+              <!-- <option value="Old survey (full page)">
+                Old survey (full page)
+              </option> -->
+              <option value="New survey (full page)">
+                New survey (full page)
+              </option>
+              <option value="Trivia">Trivia</option>
+              <option value="Loyalty (widget)">Loyalty (widget)</option>
+              <option value="Loyalty (tracker)">Loyalty (tracker)</option>
+            </select>
+          </div>
+
+          <div class="col">
+            <label class="form-label">Widget ID</label>
+            <input class="form-control" name="id" required />
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col">
+            <label class="form-label">Widget width (px)</label>
+            <input class="form-control" name="width" type="number" min="1" />
+            <div class="form-text">By default 100%</div>
+          </div>
+
+          <div class="col">
+            <label class="form-label">Widget height (px)</label>
+            <input class="form-control" name="height" type="number" min="1" />
+            <div class="form-text">By default 100%</div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary">Add widget</button>
+      </form>
+
+      <table class="table mt-3">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Width</th>
+            <th>Height</th>
+            <th>Embedded</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr id="noWidgetsMessage">
+            <td colspan="6">No widgets</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="d-flex justify-content-end">
+        <button class="btn btn-primary" disabled id="btnGeneratePage">
+          Generate page
+        </button>
+      </div>
+    </div>
+
+    <script type="module">
+      import { embedCodes } from "./embedCodes.js";
+
+      const uuidv4 = () => {
+        return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+          (
+            c ^
+            (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+          ).toString(16)
+        );
+      };
+
+      const widgets = [];
+      const form = document.querySelector("#form");
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        const values = [...new FormData(form).entries()].reduce(
+          (values, [key, value]) => {
+            values[key] = value;
+            return values;
+          },
+          {}
+        );
+
+        widgets.push(values);
+
+        const { name, id, type } = values;
+
+        const width = values.width ? `${values.width}px` : "100%";
+        const height = values.height ? `${values.height}px` : "100%";
+
+        const iframeId = uuidv4();
+
+        document.querySelector("#noWidgetsMessage").remove();
+
+        document.querySelector("#tableBody").insertAdjacentHTML(
+          "beforeend",
+          `<tr>
+            <td>${name}</td>
+            <td>${id}</td>
+            <td>${type}</td>
+            <td>${width}</td>
+            <td>${height}</td>
+            <td><iframe style="border: 2px solid red" id="${iframeId}" width="${width}" height="${height}"></iframe></td>
+          </tr>
+        `
+        );
+
+        const iframe = document.getElementById(iframeId).contentWindow.document;
+
+        iframe.open();
+        iframe.write(`
+          <style>body { margin: 0 }</style>
+          ${embedCodes[type].replace("{{id}}", id)}
+        `);
+        iframe.close();
+
+        form.reset();
+
+        document.querySelector("#btnGeneratePage").disabled = false;
+      });
+
+      document
+        .querySelector("#btnGeneratePage")
+        .addEventListener("click", async () => {
+          const stringifyWidgets = JSON.stringify(widgets);
+
+          fetch("./viewer.html")
+            .then((response) => response.text())
+            .then(function (html) {
+              const a = document.createElement("a");
+              a.href = window.URL.createObjectURL(
+                new Blob([html.replace("{{json}}", stringifyWidgets)], {
+                  type: "text/html",
+                })
+              );
+              a.download = `${new Date().toISOString()}.html`;
+              a.click();
+            })
+            .catch(function (err) {
+              alert("Something went wrong.", err);
+            });
+        });
+    </script>
+  </body>
+</html>

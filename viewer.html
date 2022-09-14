@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Viewer</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT"
+      crossorigin="anonymous"
+    />
+  </head>
+  <body>
+    <div class="container">
+      <table class="table mt-3">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Width</th>
+            <th>Height</th>
+            <th>Embedded</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <script type="module">
+      import { embedCodes } from "./embedCodes.js";
+
+      const uuidv4 = () => {
+        return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+          (
+            c ^
+            (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+          ).toString(16)
+        );
+      };
+
+      const parsedWidgets = JSON.parse(`{{json}}`);
+
+      parsedWidgets.forEach((values) => {
+        const { name, id, type } = values;
+
+        const width = values.width ? `${values.width}px` : "100%";
+        const height = values.height ? `${values.height}px` : "100%";
+
+        const iframeId = uuidv4();
+
+        document.querySelector("#tableBody").insertAdjacentHTML(
+          "beforeend",
+          `<tr>
+            <td>${name}</td>
+            <td>${id}</td>
+            <td>${type}</td>
+            <td>${width}</td>
+            <td>${height}</td>
+            <td><iframe style="border: 2px solid red" id="${iframeId}" width="${width}" height="${height}"></iframe></td>
+          </tr>
+        `
+        );
+
+        const iframe = document.getElementById(iframeId).contentWindow.document;
+
+        iframe.open();
+        iframe.write(`
+          <style>body { margin: 0 }</style>
+          ${embedCodes[type].replace("{{id}}", id)}
+        `);
+        iframe.close();
+      });
+    </script>
+  </body>
+</html>
